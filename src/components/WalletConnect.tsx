@@ -5,7 +5,19 @@ import { useWallet } from "@/hooks/useWallet";
 import { toast } from "@/hooks/use-toast";
 
 export const WalletConnect = () => {
-  const { isConnected, accountId, address, isLoading, connectMetaMask, disconnect, isMetaMaskInstalled } = useWallet();
+  const { 
+    isConnected, 
+    accountId, 
+    address, 
+    isLoading, 
+    walletType,
+    connectWallet, 
+    connectHashPack,
+    connectMetaMask,
+    disconnect, 
+    isMetaMaskInstalled,
+    isHashPackInstalled 
+  } = useWallet();
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -30,36 +42,72 @@ export const WalletConnect = () => {
               </p>
             </div>
             
-            {!isMetaMaskInstalled() ? (
+            {!isHashPackInstalled() && !isMetaMaskInstalled() ? (
               <div className="space-y-3">
-                <p className="text-warning text-sm">MetaMask not detected</p>
-                <Button
-                  variant="outline"
-                  onClick={() => window.open("https://metamask.io/", "_blank")}
-                  className="w-full"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Install MetaMask
-                </Button>
+                <p className="text-warning text-sm">No compatible wallet detected</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open("https://www.hashpack.app/", "_blank")}
+                    className="flex-1"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Install HashPack
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open("https://metamask.io/", "_blank")}
+                    className="flex-1"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Install MetaMask
+                  </Button>
+                </div>
               </div>
             ) : (
-              <Button
-                onClick={connectMetaMask}
-                disabled={isLoading}
-                className="btn-hero w-full"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Connecting...
+              <div className="space-y-3">
+                <Button
+                  onClick={connectWallet}
+                  disabled={isLoading}
+                  className="btn-hero w-full"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Connecting...
+                    </div>
+                   ) : (
+                     <>
+                       <Wallet className="w-4 h-4 mr-2" />
+                       Connect Wallet
+                     </>
+                   )}
+                </Button>
+                {(isHashPackInstalled() || isMetaMaskInstalled()) && (
+                  <div className="flex gap-2">
+                    {isHashPackInstalled() && (
+                      <Button
+                        variant="outline"
+                        onClick={connectHashPack}
+                        disabled={isLoading}
+                        className="flex-1"
+                      >
+                        HashPack
+                      </Button>
+                    )}
+                    {isMetaMaskInstalled() && (
+                      <Button
+                        variant="outline"
+                        onClick={connectMetaMask}
+                        disabled={isLoading}
+                        className="flex-1"
+                      >
+                        MetaMask
+                      </Button>
+                    )}
                   </div>
-                 ) : (
-                   <>
-                     <Wallet className="w-4 h-4 mr-2" />
-                     Connect Wallet
-                   </>
-                 )}
-              </Button>
+                )}
+              </div>
             )}
           </div>
         </CardContent>
@@ -78,7 +126,9 @@ export const WalletConnect = () => {
               </div>
               <div>
                 <h3 className="font-semibold">Wallet Connected</h3>
-                <p className="text-sm text-muted-foreground">MetaMask</p>
+                <p className="text-sm text-muted-foreground">
+                  {walletType === 'hashpack' ? 'HashPack' : 'MetaMask'}
+                </p>
               </div>
             </div>
             <Button
@@ -106,19 +156,21 @@ export const WalletConnect = () => {
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-xs text-muted-foreground">Ethereum Address</p>
-                <p className="font-mono text-sm">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
+            {walletType === 'metamask' && address && (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground">Ethereum Address</p>
+                  <p className="font-mono text-sm">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(address!, "Address")}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(address!, "Address")}
-              >
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
+            )}
           </div>
         </div>
       </CardContent>

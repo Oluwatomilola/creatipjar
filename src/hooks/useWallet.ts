@@ -7,6 +7,7 @@ export interface WalletState {
   address: string | null;
   isLoading: boolean;
   error: string | null;
+  walletType: 'metamask' | 'hashpack' | null;
 }
 
 export const useWallet = () => {
@@ -16,12 +17,74 @@ export const useWallet = () => {
     address: null,
     isLoading: false,
     error: null,
+    walletType: null,
   });
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = useCallback(() => {
     return typeof window !== "undefined" && window.ethereum && window.ethereum.isMetaMask;
   }, []);
+
+  // Check if HashPack is installed
+  const isHashPackInstalled = useCallback(() => {
+    return typeof window !== "undefined" && window.hashpack;
+  }, []);
+
+  // Connect to HashPack
+  const connectHashPack = useCallback(async () => {
+    if (!isHashPackInstalled()) {
+      const error = "HashPack is not installed. Please install HashPack to continue.";
+      setWallet(prev => ({ ...prev, error }));
+      toast({
+        title: "HashPack Required",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWallet(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const response = await window.hashpack.connectToLocalWallet();
+      
+      if (response.success && response.data && response.data.accountIds.length > 0) {
+        const accountId = response.data.accountIds[0];
+        
+        setWallet({
+          isConnected: true,
+          accountId,
+          address: null, // HashPack uses account IDs, not addresses
+          isLoading: false,
+          error: null,
+          walletType: 'hashpack',
+        });
+
+        toast({
+          title: "Wallet Connected",
+          description: `Connected to HashPack account ${accountId}`,
+        });
+      } else {
+        throw new Error("Failed to connect to HashPack");
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
+      setWallet({
+        isConnected: false,
+        accountId: null,
+        address: null,
+        isLoading: false,
+        error: errorMessage,
+        walletType: null,
+      });
+
+      toast({
+        title: "Connection Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }, [isHashPackInstalled]);
 
   // Connect to MetaMask
   const connectMetaMask = useCallback(async () => {
@@ -55,11 +118,12 @@ export const useWallet = () => {
           address,
           isLoading: false,
           error: null,
+          walletType: 'metamask',
         });
 
         toast({
           title: "Wallet Connected",
-          description: `Connected to account ${mockAccountId}`,
+          description: `Connected to MetaMask account ${mockAccountId}`,
         });
       }
     } catch (error) {
@@ -70,6 +134,7 @@ export const useWallet = () => {
         address: null,
         isLoading: false,
         error: errorMessage,
+        walletType: null,
       });
 
       toast({
@@ -80,6 +145,23 @@ export const useWallet = () => {
     }
   }, [isMetaMaskInstalled]);
 
+  // Connect wallet (tries HashPack first, then MetaMask)
+  const connectWallet = useCallback(async () => {
+    if (isHashPackInstalled()) {
+      await connectHashPack();
+    } else if (isMetaMaskInstalled()) {
+      await connectMetaMask();
+    } else {
+      const error = "No compatible wallet found. Please install HashPack or MetaMask.";
+      setWallet(prev => ({ ...prev, error }));
+      toast({
+        title: "Wallet Required",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [isHashPackInstalled, isMetaMaskInstalled, connectHashPack, connectMetaMask]);
+
   // Disconnect wallet
   const disconnect = useCallback(() => {
     setWallet({
@@ -88,6 +170,7 @@ export const useWallet = () => {
       address: null,
       isLoading: false,
       error: null,
+      walletType: null,
     });
 
     toast({
@@ -99,6 +182,29 @@ export const useWallet = () => {
   // Check if already connected on mount
   useEffect(() => {
     const checkConnection = async () => {
+      // Check HashPack first
+      if (isHashPackInstalled()) {
+        try {
+          const response = await window.hashpack.findLocalWallets();
+          if (response.success && response.data && response.data.length > 0) {
+            // HashPack is connected
+            const accountId = response.data[0].accountId;
+            setWallet({
+              isConnected: true,
+              accountId,
+              address: null,
+              isLoading: false,
+              error: null,
+              walletType: 'hashpack',
+            });
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to check HashPack connection:", error);
+        }
+      }
+
+      // Check MetaMask
       if (isMetaMaskInstalled()) {
         try {
           const accounts = await window.ethereum.request({
@@ -115,20 +221,21 @@ export const useWallet = () => {
               address,
               isLoading: false,
               error: null,
+              walletType: 'metamask',
             });
           }
         } catch (error) {
-          console.error("Failed to check wallet connection:", error);
+          console.error("Failed to check MetaMask connection:", error);
         }
       }
     };
 
     checkConnection();
-  }, [isMetaMaskInstalled]);
+  }, [isMetaMaskInstalled, isHashPackInstalled]);
 
   // Listen for account changes
   useEffect(() => {
-    if (isMetaMaskInstalled()) {
+    if (wallet.walletType === 'metamask' && isMetaMaskInstalled()) {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
           disconnect();
@@ -144,13 +251,16 @@ export const useWallet = () => {
         window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
       };
     }
-  }, [wallet.address, connectMetaMask, disconnect, isMetaMaskInstalled]);
+  }, [wallet.address, wallet.walletType, connectMetaMask, disconnect, isMetaMaskInstalled]);
 
   return {
     ...wallet,
+    connectWallet,
     connectMetaMask,
+    connectHashPack,
     disconnect,
     isMetaMaskInstalled,
+    isHashPackInstalled,
   };
 };
 
@@ -162,6 +272,24 @@ declare global {
       request: (args: { method: string; params?: any[] }) => Promise<any>;
       on: (event: string, handler: (...args: any[]) => void) => void;
       removeListener: (event: string, handler: (...args: any[]) => void) => void;
+    };
+    hashpack?: {
+      connectToLocalWallet: () => Promise<{
+        success: boolean;
+        data?: {
+          accountIds: string[];
+          network: string;
+        };
+        error?: string;
+      }>;
+      findLocalWallets: () => Promise<{
+        success: boolean;
+        data?: Array<{
+          accountId: string;
+          network: string;
+        }>;
+        error?: string;
+      }>;
     };
   }
 }
