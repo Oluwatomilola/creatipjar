@@ -26,7 +26,7 @@ export const WalletConnect = () => {
             <div>
               <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
               <p className="text-muted-foreground text-sm mb-4">
-                Connect your MetaMask wallet to start sending tips on Hedera
+                Connect your wallet to start sending tips on Hedera
               </p>
             </div>
             
@@ -53,12 +53,12 @@ export const WalletConnect = () => {
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Connecting...
                   </div>
-                ) : (
-                  <>
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Connect MetaMask
-                  </>
-                )}
+                 ) : (
+                   <>
+                     <Wallet className="w-4 h-4 mr-2" />
+                     Connect Wallet
+                   </>
+                 )}
               </Button>
             )}
           </div>
