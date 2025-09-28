@@ -8,14 +8,12 @@ export const WalletConnect = () => {
   const { 
     isConnected, 
     accountId, 
-    address, 
     isLoading, 
     walletType,
+    pairingString,
     connectWallet, 
     connectHashPack,
-    connectMetaMask,
     disconnect, 
-    isMetaMaskInstalled,
     isHashPackInstalled 
   } = useWallet();
 
@@ -42,73 +40,54 @@ export const WalletConnect = () => {
               </p>
             </div>
             
-            {!isHashPackInstalled() && !isMetaMaskInstalled() ? (
-              <div className="space-y-3">
-                <p className="text-warning text-sm">No compatible wallet detected</p>
-                <div className="flex gap-2">
+            <div className="space-y-3">
+              <Button
+                onClick={connectWallet}
+                disabled={isLoading}
+                className="btn-hero w-full"
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Connecting...
+                  </div>
+                 ) : (
+                   <>
+                     <Wallet className="w-4 h-4 mr-2" />
+                     Connect HashPack
+                   </>
+                 )}
+              </Button>
+              
+              {pairingString && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Enter this pairing code in HashPack:
+                  </p>
+                  <p className="font-mono text-sm break-all">{pairingString}</p>
                   <Button
-                    variant="outline"
-                    onClick={() => window.open("https://www.hashpack.app/", "_blank")}
-                    className="flex-1"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(pairingString, "Pairing code")}
+                    className="mt-2"
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Install HashPack
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open("https://metamask.io/", "_blank")}
-                    className="flex-1"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Install MetaMask
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Code
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
+              )}
+              
+              <div className="text-center">
                 <Button
-                  onClick={connectWallet}
-                  disabled={isLoading}
-                  className="btn-hero w-full"
+                  variant="outline"
+                  onClick={() => window.open("https://www.hashpack.app/", "_blank")}
+                  className="text-sm"
                 >
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Connecting...
-                    </div>
-                   ) : (
-                     <>
-                       <Wallet className="w-4 h-4 mr-2" />
-                       Connect Wallet
-                     </>
-                   )}
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Don't have HashPack? Install it here
                 </Button>
-                {(isHashPackInstalled() || isMetaMaskInstalled()) && (
-                  <div className="flex gap-2">
-                    {isHashPackInstalled() && (
-                      <Button
-                        variant="outline"
-                        onClick={connectHashPack}
-                        disabled={isLoading}
-                        className="flex-1"
-                      >
-                        HashPack
-                      </Button>
-                    )}
-                    {isMetaMaskInstalled() && (
-                      <Button
-                        variant="outline"
-                        onClick={connectMetaMask}
-                        disabled={isLoading}
-                        className="flex-1"
-                      >
-                        MetaMask
-                      </Button>
-                    )}
-                  </div>
-                )}
               </div>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -126,9 +105,7 @@ export const WalletConnect = () => {
               </div>
               <div>
                 <h3 className="font-semibold">Wallet Connected</h3>
-                <p className="text-sm text-muted-foreground">
-                  {walletType === 'hashpack' ? 'HashPack' : 'MetaMask'}
-                </p>
+                <p className="text-sm text-muted-foreground">HashPack</p>
               </div>
             </div>
             <Button
@@ -156,21 +133,6 @@ export const WalletConnect = () => {
               </Button>
             </div>
 
-            {walletType === 'metamask' && address && (
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="text-xs text-muted-foreground">Ethereum Address</p>
-                  <p className="font-mono text-sm">{address?.slice(0, 6)}...{address?.slice(-4)}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(address!, "Address")}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </CardContent>

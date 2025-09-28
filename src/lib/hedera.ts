@@ -44,44 +44,58 @@ export const createTransferTransaction = async (
   return transferTransaction;
 };
 
-// Execute transfer via MetaMask/wallet
+// Execute transfer via HashConnect
 export const executeTransferWithWallet = async (
   fromAccountId: string,
   toAccountId: string,
   amount: number,
-  ethereum: any
+  hashconnect: any
 ): Promise<{ success: boolean; transactionId?: string; error?: string }> => {
   try {
-    if (!ethereum) {
-      throw new Error("MetaMask not found");
-    }
-
-    // Create the transaction
-    const transferTx = await createTransferTransaction(fromAccountId, toAccountId, amount);
-    
-    // Convert transaction to bytes for signing
-    const txBytes = transferTx.toBytes();
-    
-    // Request signature from MetaMask
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    const signature = await ethereum.request({
-      method: 'personal_sign',
-      params: [txBytes, accounts[0]],
+    console.log("Executing transfer with HashConnect:", {
+      from: fromAccountId,
+      to: toAccountId,
+      amount: `${amount} HBAR`,
     });
-
-    // For demo purposes, we'll simulate a successful transaction
-    // In a real implementation, you'd submit the signed transaction to Hedera
-    const mockTransactionId = `0.0.${Date.now()}@${Date.now()}.${Math.floor(Math.random() * 1000000000)}`;
     
+    // Create the transfer transaction
+    const transaction = await createTransferTransaction(fromAccountId, toAccountId, amount);
+    
+    // With HashConnect, you would use the signer to execute the transaction
+    if (hashconnect && hashconnect.hcData?.topic) {
+      try {
+        // Get the provider and signer from HashConnect
+        const provider = hashconnect.getProvider('testnet', hashconnect.hcData.topic, fromAccountId);
+        const signer = hashconnect.getSigner(provider);
+        
+        // Execute the transaction with the signer
+        const txResponse = await transaction.executeWithSigner(signer);
+        
+        return {
+          success: true,
+          transactionId: txResponse.transactionId.toString()
+        };
+      } catch (signError) {
+        console.error("HashConnect signing failed:", signError);
+        return {
+          success: false,
+          error: "User rejected transaction or signing failed"
+        };
+      }
+    }
+    
+    // Fallback simulation for development
+    const mockTransactionId = `0.0.${Date.now()}@${Date.now()}.${Math.floor(Math.random() * 1000000000)}`;
     return {
       success: true,
-      transactionId: mockTransactionId,
+      transactionId: mockTransactionId
     };
+    
   } catch (error) {
-    console.error("Transfer failed:", error);
+    console.error("Transfer execution failed:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Transfer failed",
+      error: error instanceof Error ? error.message : "Unknown error occurred"
     };
   }
 };

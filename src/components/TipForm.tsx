@@ -14,7 +14,7 @@ interface TipFormProps {
 }
 
 export const TipForm = ({ onTipSent }: TipFormProps) => {
-  const { isConnected, accountId } = useWallet();
+  const { isConnected, accountId, hashconnect } = useWallet();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
@@ -67,7 +67,7 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
         accountId,
         recipient,
         tipAmount,
-        window.ethereum
+        hashconnect
       );
 
       if (result.success) {
