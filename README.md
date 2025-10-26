@@ -1,8 +1,8 @@
-# Hedera TipJar - Decentralized Tipping dApp
+# CreatipJar - Decentralized Tipping dApp
 
-A beautiful, fast, and secure tipping application built on Hedera Hashgraph. Send HBAR tips instantly with minimal fees using MetaMask wallet integration.
+A beautiful, fast, and secure tipping application for creatives built on Hedera Hashgraph. Send HBAR tips instantly with minimal fees using MetaMask wallet integration.
 
-![Hedera TipJar](https://via.placeholder.com/800x400/00D4AA/ffffff?text=Hedera+TipJar)
+![CreatipJar](https://via.placeholder.com/800x400/00D4AA/ffffff?text=Hedera+TipJar)
 
 ## ✨ Features
 
