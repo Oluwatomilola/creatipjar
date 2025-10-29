@@ -43,7 +43,7 @@ export const Landing = () => {
           {/* Main Hero Content */}
           <div className="space-y-6">
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              Hedera TipJar
+              CreatipJar
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
               The easiest way to send and receive HBAR tips on the Hedera network. 
@@ -91,7 +91,7 @@ export const Landing = () => {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Why Choose Hedera TipJar?
+            Why Choose CreatipJar?
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Built for the next generation of digital tipping with enterprise-grade security
@@ -181,7 +181,7 @@ export const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2024 Hedera TipJar. Built with ❤️ for the Hedera community.</p>
+          <p>&copy; 2024 CreatipJar. Built with ❤️ for the Hedera community.</p>
         </div>
       </footer>
     </div>

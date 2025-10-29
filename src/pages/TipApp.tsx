@@ -33,7 +33,7 @@ export const TipApp = () => {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                  Hedera TipJar
+                  CreatipJar
                 </h1>
                 <p className="text-sm text-muted-foreground">Send HBAR tips instantly</p>
               </div>
