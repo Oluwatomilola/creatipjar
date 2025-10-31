@@ -15,6 +15,7 @@ const appMetadata = {
   name: "CreatipJar",
   description: "Send HBAR tips instantly on Hedera",
   icon: "https://absolute.url/to/icon.png",
+  url: window.location.origin,
 };
 
 export const useWallet = () => {
@@ -34,11 +35,20 @@ export const useWallet = () => {
   useEffect(() => {
     const initHashConnect = async () => {
       try {
-        const hashconnect = new HashConnect();
+        const hashconnect = new HashConnect(true); // Enable debug mode
         hashconnectRef.current = hashconnect;
 
+        // Listen for HashPack extension being found
+        hashconnect.foundExtensionEvent.once((walletMetadata) => {
+          console.log("Found extension:", walletMetadata);
+          toast({
+            title: "HashPack Detected",
+            description: "HashPack wallet extension is installed",
+          });
+        });
+
         // Set up pairing event listener
-        hashconnect.pairingEvent.on((pairingData) => {
+        hashconnect.pairingEvent.once((pairingData) => {
           console.log("Pairing event:", pairingData);
           if (pairingData.accountIds && pairingData.accountIds.length > 0) {
             setWallet(prev => ({
@@ -103,7 +113,7 @@ export const useWallet = () => {
 
   // Connect to HashPack
   const connectHashPack = useCallback(async () => {
-    if (!hashconnectRef.current || !initDataRef.current) {
+    if (!hashconnectRef.current) {
       toast({
         title: "Error",
         description: "HashConnect not initialized",
@@ -115,36 +125,15 @@ export const useWallet = () => {
     setWallet(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const savedPairings = hashconnectRef.current.hcData.pairingData;
+      // v2 API: connectToLocalWallet() opens the HashPack extension for pairing
+      await hashconnectRef.current.connectToLocalWallet();
       
-      if (savedPairings && savedPairings.length > 0) {
-        // Already paired
-        const pairing = savedPairings[0];
-        if (pairing.accountIds && pairing.accountIds.length > 0) {
-          setWallet(prev => ({
-            ...prev,
-            isConnected: true,
-            accountId: pairing.accountIds[0],
-            walletType: 'hashpack',
-            isLoading: false,
-          }));
-          
-          toast({
-            title: "Wallet Connected!",
-            description: `Connected to ${pairing.accountIds[0]}`,
-          });
-        }
-      } else {
-        // Need to pair - connect to local wallet
-        hashconnectRef.current.connectToLocalWallet();
-        
-        toast({
-          title: "Open HashPack",
-          description: "Please approve the connection in your HashPack wallet",
-        });
-        
-        setWallet(prev => ({ ...prev, isLoading: false }));
-      }
+      toast({
+        title: "Opening HashPack",
+        description: "Please approve the connection in your HashPack wallet extension",
+      });
+      
+      setWallet(prev => ({ ...prev, isLoading: false }));
     } catch (error: any) {
       console.error("Failed to connect:", error);
       setWallet(prev => ({
@@ -155,7 +144,7 @@ export const useWallet = () => {
 
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect to HashPack",
+        description: error.message || "Failed to connect to HashPack. Make sure HashPack extension is installed.",
         variant: "destructive",
       });
     }
@@ -168,10 +157,10 @@ export const useWallet = () => {
 
   // Disconnect wallet
   const disconnect = useCallback(() => {
-    if (hashconnectRef.current) {
-      const savedPairings = hashconnectRef.current.hcData.pairingData;
-      if (savedPairings && savedPairings.length > 0 && savedPairings[0].topic) {
-        hashconnectRef.current.disconnect(savedPairings[0].topic);
+    if (hashconnectRef.current && initDataRef.current) {
+      const topic = initDataRef.current.topic;
+      if (topic) {
+        hashconnectRef.current.disconnect(topic);
       }
     }
     
