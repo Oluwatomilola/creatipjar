@@ -29,7 +29,7 @@ A beautiful, fast, and secure tipping application for creatives built on Hedera 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- MetaMask browser extension
+- Hashpack browser extension
 - Git
 
 ### Installation
@@ -189,7 +189,7 @@ npm test -- WalletConnect.test.tsx
 ### Manual Testing
 
 1. **Testnet Testing**: Use testnet HBAR from Hedera Portal faucet
-2. **MetaMask Setup**: Add Hedera testnet to MetaMask
+2. **Hashpack Setup**: Install Hashpack wallet in Machine
 3. **Transaction Verification**: Check transactions on HashScan
 
 ## 🔐 Security
@@ -270,6 +270,8 @@ Enable debug logging by setting:
 localStorage.setItem('debug', 'hedera-tipjar:*')
 ```
 
+## PRD [Docs](https://docs.google.com/document/d/1BlylmhBxZpYK6UN4aQgpPjz75FPBFhPTGSouTXziQQ4/edit?usp=sharing)
+
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
@@ -287,6 +289,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Discord**: [Hedera Discord](https://discord.com/invite/hedera)
 - **Issues**: Create an issue in this repository
 
----
+- **Certification**: https://certs.hashgraphdev.com/7aa4a297-f28d-4157-99dd-4ae9c68788d2.pdf
 
 Built with ❤️ for the Hedera community. Happy tipping! 🎉
