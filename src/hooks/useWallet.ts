@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
+import { HashConnect } from "@hashgraph/hashconnect";
 
 export interface WalletState {
   isConnected: boolean;
@@ -10,6 +11,12 @@ export interface WalletState {
   pairingString: string | null;
 }
 
+const appMetadata = {
+  name: "CreatipJar",
+  description: "Send HBAR tips instantly on Hedera",
+  icon: "https://absolute.url/to/icon.png",
+};
+
 export const useWallet = () => {
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
@@ -19,6 +26,75 @@ export const useWallet = () => {
     walletType: null,
     pairingString: null,
   });
+  
+  const hashconnectRef = useRef<HashConnect | null>(null);
+  const initDataRef = useRef<any>(null);
+
+  // Initialize HashConnect
+  useEffect(() => {
+    const initHashConnect = async () => {
+      try {
+        const hashconnect = new HashConnect();
+        hashconnectRef.current = hashconnect;
+
+        // Set up pairing event listener
+        hashconnect.pairingEvent.on((pairingData) => {
+          console.log("Pairing event:", pairingData);
+          if (pairingData.accountIds && pairingData.accountIds.length > 0) {
+            setWallet(prev => ({
+              ...prev,
+              isConnected: true,
+              accountId: pairingData.accountIds[0],
+              walletType: 'hashpack',
+              isLoading: false,
+              pairingString: null,
+            }));
+
+            toast({
+              title: "Wallet Connected!",
+              description: `Connected to ${pairingData.accountIds[0]}`,
+            });
+          }
+        });
+
+        // Initialize with testnet
+        const initData = await hashconnect.init(appMetadata, "testnet", false);
+        initDataRef.current = initData;
+        
+        console.log("HashConnect initialized:", initData);
+        
+        // Set pairing string
+        if (initData.pairingString) {
+          setWallet(prev => ({
+            ...prev,
+            pairingString: initData.pairingString,
+          }));
+        }
+
+        // Check for existing pairings
+        if (initData.savedPairings && initData.savedPairings.length > 0) {
+          const pairing = initData.savedPairings[0];
+          if (pairing.accountIds && pairing.accountIds.length > 0) {
+            setWallet(prev => ({
+              ...prev,
+              isConnected: true,
+              accountId: pairing.accountIds[0],
+              walletType: 'hashpack',
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize HashConnect:", error);
+        toast({
+          title: "Initialization Error",
+          description: "Failed to initialize wallet connection",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initHashConnect();
+  }, []);
 
   // Check if HashPack is installed
   const isHashPackInstalled = useCallback(() => {
@@ -27,14 +103,62 @@ export const useWallet = () => {
 
   // Connect to HashPack
   const connectHashPack = useCallback(async () => {
+    if (!hashconnectRef.current || !initDataRef.current) {
+      toast({
+        title: "Error",
+        description: "HashConnect not initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setWallet(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    toast({
-      title: "HashConnect Integration Coming Soon",
-      description: "HashPack wallet integration is being set up",
-    });
-    
-    setWallet(prev => ({ ...prev, isLoading: false }));
+
+    try {
+      const savedPairings = hashconnectRef.current.hcData.pairingData;
+      
+      if (savedPairings && savedPairings.length > 0) {
+        // Already paired
+        const pairing = savedPairings[0];
+        if (pairing.accountIds && pairing.accountIds.length > 0) {
+          setWallet(prev => ({
+            ...prev,
+            isConnected: true,
+            accountId: pairing.accountIds[0],
+            walletType: 'hashpack',
+            isLoading: false,
+          }));
+          
+          toast({
+            title: "Wallet Connected!",
+            description: `Connected to ${pairing.accountIds[0]}`,
+          });
+        }
+      } else {
+        // Need to pair - connect to local wallet
+        hashconnectRef.current.connectToLocalWallet();
+        
+        toast({
+          title: "Open HashPack",
+          description: "Please approve the connection in your HashPack wallet",
+        });
+        
+        setWallet(prev => ({ ...prev, isLoading: false }));
+      }
+    } catch (error: any) {
+      console.error("Failed to connect:", error);
+      setWallet(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error.message || "Failed to connect wallet",
+      }));
+
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to connect to HashPack",
+        variant: "destructive",
+      });
+    }
   }, []);
 
   // Connect wallet
@@ -44,13 +168,20 @@ export const useWallet = () => {
 
   // Disconnect wallet
   const disconnect = useCallback(() => {
+    if (hashconnectRef.current) {
+      const savedPairings = hashconnectRef.current.hcData.pairingData;
+      if (savedPairings && savedPairings.length > 0 && savedPairings[0].topic) {
+        hashconnectRef.current.disconnect(savedPairings[0].topic);
+      }
+    }
+    
     setWallet({
       isConnected: false,
       accountId: null,
       isLoading: false,
       error: null,
       walletType: null,
-      pairingString: null,
+      pairingString: initDataRef.current?.pairingString || null,
     });
 
     toast({
@@ -65,7 +196,7 @@ export const useWallet = () => {
     connectHashPack,
     disconnect,
     isHashPackInstalled,
-    hashconnect: null, // Temporarily disabled
+    hashconnect: hashconnectRef.current,
   };
 };
 
