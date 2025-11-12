@@ -58,7 +58,7 @@ npm run dev
 5. **Open your browser**
 Navigate to `http://localhost:8080`
 
-## 📖 How to Use
+## 📖 How to Use/ Demo Video: [](https://www.loom.com/share/45c841aa1ed244298ebb596fad8c6044)
 
 ### For Tippers
 
