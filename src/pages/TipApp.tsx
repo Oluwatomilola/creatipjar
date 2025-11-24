@@ -35,7 +35,7 @@ export const TipApp = () => {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
                   CreatipJar
                 </h1>
-                <p className="text-sm text-muted-foreground">Send HBAR tips instantly</p>
+                <p className="text-sm text-muted-foreground">Send ETH tips on Base</p>
               </div>
             </div>
             <div className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
@@ -70,9 +70,9 @@ export const TipApp = () => {
 
           {/* Network Info */}
           <div className="bg-muted/30 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-semibold mb-2">Running on Hedera Testnet</h3>
+            <h3 className="text-lg font-semibold mb-2">Running on Base Sepolia</h3>
             <p className="text-muted-foreground mb-4">
-              This demo uses Hedera testnet for safe testing. Real HBAR is not required.
+              This demo uses Base Sepolia testnet for safe testing.
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm">
               <span className="flex items-center">

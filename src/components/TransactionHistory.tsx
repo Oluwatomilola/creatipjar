@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { History, ExternalLink, RefreshCw, TrendingUp, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { ExternalLink, History, RefreshCw } from "lucide-react";
 import { fetchRecentTransactions, Transaction } from "@/lib/api";
-import { formatHbar, tinybarsToHbar } from "@/lib/hedera";
-import { CURRENT_NETWORK } from "@/lib/hedera";
+import { useWallet } from "@/hooks/useWallet";
+import { formatEth, formatUsdc, getExplorerUrl, shortenAddress } from "@/lib/base";
 
 interface TransactionHistoryProps {
   refreshTrigger?: number;
@@ -15,64 +14,74 @@ export const TransactionHistory = ({ refreshTrigger }: TransactionHistoryProps) 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { address, isConnected } = useWallet();
 
   const loadTransactions = async () => {
+    if (!address) return;
+    
     setIsLoading(true);
     setError(null);
     
     try {
-      const txs = await fetchRecentTransactions();
-      // Filter for successful transfer transactions
-      const tipTransactions = txs.filter(tx => 
-        tx.result === "SUCCESS" && 
-        tx.transfers.length >= 2 &&
-        tx.transfers.some(transfer => transfer.amount > 0)
+      const data = await fetchRecentTransactions(address, 20);
+      
+      // Filter for successful transactions with value
+      const filteredTxs = data.filter(
+        (tx) => tx.isError === '0' && tx.value !== '0'
       );
-      setTransactions(tipTransactions.slice(0, 10)); // Show last 10 tips
+      
+      setTransactions(filteredTxs.slice(0, 10));
     } catch (err) {
+      console.error("Error loading transactions:", err);
       setError("Failed to load transactions");
-      console.error("Transaction loading error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTransactions();
-  }, [refreshTrigger]);
+    if (isConnected && address) {
+      loadTransactions();
+    }
+  }, [refreshTrigger, address, isConnected]);
 
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(parseFloat(timestamp) * 1000);
+    const date = new Date(parseInt(timestamp) * 1000);
     return date.toLocaleString();
   };
 
-  const getTransactionUrl = (transactionId: string) => {
-    const baseUrl = CURRENT_NETWORK.mirrorNodeUrl.includes('testnet') 
-      ? 'https://hashscan.io/testnet'
-      : 'https://hashscan.io/mainnet';
-    return `${baseUrl}/transaction/${transactionId}`;
-  };
+  if (!isConnected) {
+    return (
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <History className="w-5 h-5 mr-2" />
+            Recent Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-8 text-muted-foreground">
+            Connect your wallet to see transaction history
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
       <Card className="card-gradient">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <History className="w-5 h-5 text-primary" />
-            <span>Recent Tips</span>
+          <CardTitle className="flex items-center">
+            <History className="w-5 h-5 mr-2" />
+            Recent Tips
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                  <div className="space-y-2">
-                    <div className="h-4 bg-muted rounded w-24"></div>
-                    <div className="h-3 bg-muted rounded w-32"></div>
-                  </div>
-                  <div className="h-4 bg-muted rounded w-16"></div>
-                </div>
+                <div className="h-20 bg-muted rounded-lg"></div>
               </div>
             ))}
           </div>
@@ -85,24 +94,37 @@ export const TransactionHistory = ({ refreshTrigger }: TransactionHistoryProps) 
     return (
       <Card className="card-gradient">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <History className="w-5 h-5 text-primary" />
-              <span>Recent Tips</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadTransactions}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
-            </Button>
+          <CardTitle className="flex items-center">
+            <History className="w-5 h-5 mr-2" />
+            Recent Tips
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">{error}</p>
+          <div className="text-center p-8">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={loadTransactions} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <Card className="card-gradient">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <History className="w-5 h-5 mr-2" />
+            Recent Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-8 text-muted-foreground">
+            <p className="mb-2">No tips yet</p>
+            <p className="text-sm">Send your first tip to get started!</p>
           </div>
         </CardContent>
       </Card>
@@ -112,86 +134,80 @@ export const TransactionHistory = ({ refreshTrigger }: TransactionHistoryProps) 
   return (
     <Card className="card-gradient">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <History className="w-5 h-5 text-primary" />
-            <span>Recent Tips</span>
-            <Badge variant="secondary">{transactions.length}</Badge>
-          </div>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center">
+            <History className="w-5 h-5 mr-2" />
+            Recent Tips
+          </CardTitle>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={loadTransactions}
             disabled={isLoading}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
-        {transactions.length === 0 ? (
-          <div className="text-center py-8">
-            <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Tips Yet</h3>
-            <p className="text-muted-foreground">
-              Recent tip transactions will appear here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {transactions.map((tx) => {
-              const sender = tx.transfers.find(t => t.amount < 0);
-              const receiver = tx.transfers.find(t => t.amount > 0);
-              const amount = receiver ? Math.abs(receiver.amount) : 0;
-              const hbarAmount = tinybarsToHbar(amount);
+        <div className="space-y-4">
+          {transactions.map((tx) => {
+            const isOutgoing = tx.from.toLowerCase() === address?.toLowerCase();
+            const isToken = !!tx.tokenSymbol;
+            const displayAmount = isToken
+              ? `${formatUsdc((Number(tx.value) / Math.pow(10, parseInt(tx.tokenDecimal || '6'))).toString())}`
+              : `${formatEth((Number(tx.value) / 1e18).toString())} ETH`;
 
-              return (
-                <div
-                  key={tx.transaction_id}
-                  className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-success/10 rounded-full flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-success" />
+            return (
+              <div
+                key={tx.hash}
+                className="p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isOutgoing 
+                          ? 'bg-destructive/10 text-destructive' 
+                          : 'bg-success/10 text-success'
+                      }`}>
+                        {isOutgoing ? 'Sent' : 'Received'}
+                      </span>
+                      {isToken && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {tx.tokenSymbol}
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <p className="font-semibold">
-                          {formatHbar(hbarAmount)} HBAR
-                        </p>
-                        <Badge variant="outline" className="text-xs">
-                          Tip
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p>From: {sender?.account || 'Unknown'}</p>
-                        <p>To: {receiver?.account || 'Unknown'}</p>
-                        <p>{formatTimestamp(tx.consensus_timestamp)}</p>
-                      </div>
-                    </div>
+                    <p className="font-semibold text-lg">{displayAmount}</p>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Badge 
-                      variant={tx.result === "SUCCESS" ? "default" : "destructive"}
-                      className={tx.result === "SUCCESS" ? "success-glow" : ""}
-                    >
-                      {tx.result}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(getTransactionUrl(tx.transaction_id), '_blank')}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(getExplorerUrl(tx.hash, 'tx'), "_blank")}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between">
+                    <span>From:</span>
+                    <span className="font-mono">{shortenAddress(tx.from)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>To:</span>
+                    <span className="font-mono">{shortenAddress(tx.to)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Time:</span>
+                    <span>{formatTimestamp(tx.timeStamp)}</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

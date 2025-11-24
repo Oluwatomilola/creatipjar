@@ -15,7 +15,7 @@ export const Landing = () => {
     {
       icon: Shield,
       title: "Secure & Trusted",
-      description: "Built on Hedera's secure hashgraph consensus"
+      description: "Built on Base's secure Layer 2 network"
     },
     {
       icon: DollarSign,
@@ -37,7 +37,7 @@ export const Landing = () => {
           {/* Hero Badge */}
           <div className="inline-flex items-center px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium">
             <Sparkles className="w-4 h-4 mr-2" />
-            Powered by Hedera Hashgraph
+            Powered by Base Network
           </div>
 
           {/* Main Hero Content */}
@@ -46,8 +46,8 @@ export const Landing = () => {
               CreatipJar
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              The easiest way to send and receive HBAR tips on the Hedera network. 
-              Fast, secure, and affordable micro-transactions for creators and supporters.
+              The easiest way to send and receive ETH tips on Base network. 
+              Fast, secure, and affordable transactions for creators and supporters.
             </p>
           </div>
 
