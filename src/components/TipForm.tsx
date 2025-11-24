@@ -1,29 +1,34 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Send, DollarSign } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { toast } from "@/hooks/use-toast";
-import { isValidAccountId, executeTransferWithWallet } from "@/lib/hedera";
+import { isValidAddress, parseAmount, TokenType, ERC20_ABI, USDC_CONTRACT_ADDRESS } from "@/lib/base";
+import { useSendTransaction, useWriteContract } from 'wagmi';
+import { parseEther } from 'viem';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TipFormProps {
   onTipSent?: () => void;
 }
 
 export const TipForm = ({ onTipSent }: TipFormProps) => {
-  const { isConnected, accountId, hashconnect } = useWallet();
+  const { address, isConnected } = useWallet();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const [memo, setMemo] = useState("");
+  const [tokenType, setTokenType] = useState<TokenType>("ETH");
   const [isLoading, setIsLoading] = useState(false);
+
+  const { sendTransaction } = useSendTransaction();
+  const { writeContract } = useWriteContract();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isConnected || !accountId) {
+    if (!isConnected) {
       toast({
         title: "Wallet Not Connected",
         description: "Please connect your wallet first",
@@ -32,10 +37,10 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
       return;
     }
 
-    if (!isValidAccountId(recipient)) {
+    if (!recipient || !isValidAddress(recipient)) {
       toast({
-        title: "Invalid Account ID",
-        description: "Please enter a valid Hedera account ID (format: 0.0.123456)",
+        title: "Invalid Recipient",
+        description: "Please enter a valid Ethereum address",
         variant: "destructive",
       });
       return;
@@ -45,16 +50,7 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
     if (isNaN(tipAmount) || tipAmount <= 0) {
       toast({
         title: "Invalid Amount",
-        description: "Please enter a valid tip amount",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (tipAmount > 100) {
-      toast({
-        title: "Amount Too Large",
-        description: "Maximum tip amount is 100 HBAR",
+        description: "Please enter a valid amount",
         variant: "destructive",
       });
       return;
@@ -63,41 +59,74 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
     setIsLoading(true);
 
     try {
-      const result = await executeTransferWithWallet(
-        accountId,
-        recipient,
-        tipAmount,
-        hashconnect
-      );
-
-      if (result.success) {
-        toast({
-          title: "Tip Sent Successfully! 🎉",
-          description: `Sent ${tipAmount} HBAR to ${recipient}`,
-          className: "success-glow",
+      if (tokenType === 'ETH') {
+        // Send ETH
+        sendTransaction({
+          to: recipient as `0x${string}`,
+          value: parseEther(amount),
+        }, {
+          onSuccess: (hash) => {
+            toast({
+              title: "Tip Sent Successfully!",
+              description: `Sent ${amount} ETH to ${recipient.slice(0, 6)}...${recipient.slice(-4)}`,
+            });
+            setRecipient("");
+            setAmount("");
+            onTipSent?.();
+          },
+          onError: (error) => {
+            toast({
+              title: "Transaction Failed",
+              description: error.message,
+              variant: "destructive",
+            });
+          },
+          onSettled: () => {
+            setIsLoading(false);
+          }
         });
-
-        // Reset form
-        setRecipient("");
-        setAmount("");
-        setMemo("");
-        
-        // Trigger refresh of transaction history
-        onTipSent?.();
       } else {
+        // Send USDC (Note: requires USDC approval first)
         toast({
-          title: "Transfer Failed",
-          description: result.error || "Failed to send tip",
+          title: "USDC Not Yet Supported",
+          description: "USDC transfers require token approval. Use ETH for now.",
           variant: "destructive",
         });
+        setIsLoading(false);
+        /* writeContract({
+          address: USDC_CONTRACT_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'transfer',
+          args: [recipient as `0x${string}`, parseAmount(tipAmount, 'USDC')],
+        }, {
+          onSuccess: (hash) => {
+            toast({
+              title: "Tip Sent Successfully!",
+              description: `Sent ${amount} USDC to ${recipient.slice(0, 6)}...${recipient.slice(-4)}`,
+            });
+            setRecipient("");
+            setAmount("");
+            onTipSent?.();
+          },
+          onError: (error) => {
+            toast({
+              title: "Transaction Failed",
+              description: error.message,
+              variant: "destructive",
+            });
+          },
+          onSettled: () => {
+            setIsLoading(false);
+          }
+        }); */
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error sending tip:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: error.message || "Failed to send tip",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -105,13 +134,15 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
   if (!isConnected) {
     return (
       <Card className="card-gradient">
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <Send className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Connect Wallet to Send Tips</h3>
-            <p className="text-muted-foreground">
-              Connect your wallet to start sending HBAR tips on Hedera
-            </p>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Send className="w-5 h-5 mr-2" />
+            Send a Tip
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-8 text-muted-foreground">
+            Please connect your wallet to send tips
           </div>
         </CardContent>
       </Card>
@@ -121,84 +152,80 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
   return (
     <Card className="card-gradient">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Send className="w-5 h-5 text-primary" />
-          <span>Send a Tip</span>
+        <CardTitle className="flex items-center">
+          <Send className="w-5 h-5 mr-2" />
+          Send a Tip
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="recipient">Recipient Account ID</Label>
+            <Label htmlFor="recipient">Recipient Address</Label>
             <Input
               id="recipient"
-              placeholder="0.0.123456"
+              type="text"
+              placeholder="0x..."
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
               className="input-hedera"
-              required
+              disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
-              Enter the Hedera account ID of the recipient
+              Enter the Ethereum address to tip
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (HBAR)</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.00000001"
-              min="0.00000001"
-              max="100"
-              placeholder="1.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="input-hedera"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Minimum: 0.00000001 HBAR, Maximum: 100 HBAR
-            </p>
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.000001"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input-hedera"
+                disabled={isLoading}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="memo">Memo (Optional)</Label>
-            <Textarea
-              id="memo"
-              placeholder="Thanks for the great content! 🎉"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              className="input-hedera resize-none"
-              rows={3}
-              maxLength={100}
-            />
-            <p className="text-xs text-muted-foreground">
-              Add a personal message (max 100 characters)
-            </p>
+            <div className="space-y-2">
+              <Label htmlFor="token">Token</Label>
+              <Select value={tokenType} onValueChange={(value) => setTokenType(value as TokenType)}>
+                <SelectTrigger id="token" disabled={isLoading}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ETH">ETH</SelectItem>
+                  <SelectItem value="USDC">USDC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <Button
             type="submit"
-            disabled={isLoading}
             className="btn-hero w-full"
+            disabled={isLoading || !recipient || !amount}
           >
             {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 Sending Tip...
-              </>
+              </div>
             ) : (
               <>
-                <Send className="w-4 h-4 mr-2" />
-                Send {amount || "0"} HBAR
+                <DollarSign className="w-4 h-4 mr-2" />
+                Send {tokenType} Tip
               </>
             )}
           </Button>
 
-          <div className="text-xs text-muted-foreground text-center space-y-1">
-            <p>⚡ Powered by Hedera Hashgraph</p>
-            <p>🔒 Secure • Fast • Low Fees</p>
+          <div className="pt-4 border-t border-border/50">
+            <p className="text-xs text-muted-foreground text-center">
+              Powered by Base network • Fast & affordable transactions
+            </p>
           </div>
         </form>
       </CardContent>

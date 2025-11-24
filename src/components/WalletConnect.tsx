@@ -1,20 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Wallet, LogOut, Copy, ExternalLink } from "lucide-react";
+import { Wallet, LogOut, Copy } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { toast } from "@/hooks/use-toast";
+import { shortenAddress } from "@/lib/base";
 
 export const WalletConnect = () => {
   const { 
     isConnected, 
-    accountId, 
-    isLoading, 
-    walletType,
-    pairingString,
+    address, 
+    isLoading,
     connectWallet, 
-    connectHashPack,
-    disconnect, 
-    isHashPackInstalled 
+    disconnect,
   } = useWallet();
 
   const copyToClipboard = (text: string, label: string) => {
@@ -36,7 +33,7 @@ export const WalletConnect = () => {
             <div>
               <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
               <p className="text-muted-foreground text-sm mb-4">
-                Connect your wallet to start sending tips on Hedera
+                Connect your wallet to start sending tips on Base
               </p>
             </div>
             
@@ -54,39 +51,10 @@ export const WalletConnect = () => {
                  ) : (
                    <>
                      <Wallet className="w-4 h-4 mr-2" />
-                     Connect HashPack
+                     Connect Wallet
                    </>
                  )}
               </Button>
-              
-              {pairingString && (
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Enter this pairing code in HashPack:
-                  </p>
-                  <p className="font-mono text-sm break-all">{pairingString}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(pairingString, "Pairing code")}
-                    className="mt-2"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Code
-                  </Button>
-                </div>
-              )}
-              
-              <div className="text-center">
-                <Button
-                  variant="outline"
-                  onClick={() => window.open("https://www.hashpack.app/", "_blank")}
-                  className="text-sm"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Don't have HashPack? Install it here
-                </Button>
-              </div>
             </div>
           </div>
         </CardContent>
@@ -105,7 +73,7 @@ export const WalletConnect = () => {
               </div>
               <div>
                 <h3 className="font-semibold">Wallet Connected</h3>
-                <p className="text-sm text-muted-foreground">HashPack</p>
+                <p className="text-sm text-muted-foreground">Base Sepolia</p>
               </div>
             </div>
             <Button
@@ -121,18 +89,17 @@ export const WalletConnect = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div>
-                <p className="text-xs text-muted-foreground">Hedera Account ID</p>
-                <p className="font-mono text-sm">{accountId}</p>
+                <p className="text-xs text-muted-foreground">Wallet Address</p>
+                <p className="font-mono text-sm">{shortenAddress(address || '')}</p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard(accountId!, "Account ID")}
+                onClick={() => copyToClipboard(address!, "Address")}
               >
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
-
           </div>
         </div>
       </CardContent>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, DollarSign, Zap } from "lucide-react";
 import { fetchAnalytics, AnalyticsData } from "@/lib/api";
-import { formatHbar } from "@/lib/hedera";
+import { formatEth } from "@/lib/base";
+import { useWallet } from "@/hooks/useWallet";
 
 export const Analytics = () => {
+  const { address, isConnected } = useWallet();
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalTips: 0,
-    totalHbarTipped: 0,
+    totalAmount: 0,
     uniqueTippers: 0,
     recentTipsCount: 0,
   });
@@ -15,9 +17,11 @@ export const Analytics = () => {
 
   useEffect(() => {
     const loadAnalytics = async () => {
+      if (!address) return;
+      
       setIsLoading(true);
       try {
-        const data = await fetchAnalytics();
+        const data = await fetchAnalytics(address);
         setAnalytics(data);
       } catch (error) {
         console.error("Failed to load analytics:", error);
@@ -26,33 +30,35 @@ export const Analytics = () => {
       }
     };
 
-    loadAnalytics();
-    
-    // Refresh analytics every 30 seconds
-    const interval = setInterval(loadAnalytics, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isConnected && address) {
+      loadAnalytics();
+      
+      // Refresh analytics every 30 seconds
+      const interval = setInterval(loadAnalytics, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [address, isConnected]);
 
   const stats = [
     {
       title: "Total Tips",
       value: analytics.totalTips.toLocaleString(),
       icon: TrendingUp,
-      description: "All-time tips sent",
+      description: "All-time tips received",
       color: "text-primary"
     },
     {
-      title: "Total HBAR",
-      value: formatHbar(analytics.totalHbarTipped),
+      title: "Total Value",
+      value: `$${analytics.totalAmount.toFixed(2)}`,
       icon: DollarSign,
-      description: "Total value tipped",
+      description: "ETH + USDC combined",
       color: "text-success"
     },
     {
       title: "Unique Tippers",
       value: analytics.uniqueTippers.toLocaleString(),
       icon: Users,
-      description: "Different accounts",
+      description: "Different addresses",
       color: "text-accent-foreground"
     },
     {
