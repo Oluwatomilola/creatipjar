@@ -3,7 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Wallet, LogOut, Copy } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { toast } from "@/hooks/use-toast";
-import { shortenAddress } from "@/lib/base";
+import { shortenAddress, USDC_CONTRACT_ADDRESS, ERC20_ABI } from "@/lib/base";
+import { useBalance, useReadContract } from "wagmi";
+import { formatEther, formatUnits } from "viem";
 
 export const WalletConnect = () => {
   const { 
@@ -13,6 +15,19 @@ export const WalletConnect = () => {
     connectWallet, 
     disconnect,
   } = useWallet();
+
+  // Fetch ETH balance
+  const { data: ethBalance } = useBalance({
+    address: address as `0x${string}`,
+  });
+
+  // Fetch USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: USDC_CONTRACT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address as `0x${string}`] : undefined,
+  });
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -99,6 +114,21 @@ export const WalletConnect = () => {
               >
                 <Copy className="w-4 h-4" />
               </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">ETH Balance</p>
+                <p className="font-semibold">
+                  {ethBalance ? parseFloat(formatEther(ethBalance.value)).toFixed(4) : '0.0000'} ETH
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">USDC Balance</p>
+                <p className="font-semibold">
+                  {usdcBalance ? parseFloat(formatUnits(usdcBalance as bigint, 6)).toFixed(2) : '0.00'} USDC
+                </p>
+              </div>
             </div>
           </div>
         </div>
