@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, DollarSign } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { toast } from "@/hooks/use-toast";
-import { isValidAddress, parseAmount, TokenType, ERC20_ABI, USDC_CONTRACT_ADDRESS } from "@/lib/base";
-import { useSendTransaction, useWriteContract } from 'wagmi';
-import { parseEther } from 'viem';
+import { isValidAddress, parseAmount, TokenType, ERC20_ABI, USDC_CONTRACT_ADDRESS, CURRENT_NETWORK } from "@/lib/base";
+import { useSendTransaction, useWriteContract, useAccount } from 'wagmi';
+import { parseEther, parseUnits } from 'viem';
+import { baseSepolia } from 'wagmi/chains';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TipFormProps {
@@ -16,14 +17,15 @@ interface TipFormProps {
 }
 
 export const TipForm = ({ onTipSent }: TipFormProps) => {
-  const { address, isConnected } = useWallet();
+  const { address, isConnected, chainId } = useWallet();
+  const { address: account } = useAccount();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [tokenType, setTokenType] = useState<TokenType>("ETH");
   const [isLoading, setIsLoading] = useState(false);
 
   const { sendTransaction } = useSendTransaction();
-  const { writeContract } = useWriteContract();
+  const { writeContractAsync } = useWriteContract();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,40 +87,35 @@ export const TipForm = ({ onTipSent }: TipFormProps) => {
             setIsLoading(false);
           }
         });
-      } else {
-        // Send USDC (Note: requires USDC approval first)
-        toast({
-          title: "USDC Not Yet Supported",
-          description: "USDC transfers require token approval. Use ETH for now.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        /* writeContract({
-          address: USDC_CONTRACT_ADDRESS,
-          abi: ERC20_ABI,
-          functionName: 'transfer',
-          args: [recipient as `0x${string}`, parseAmount(tipAmount, 'USDC')],
-        }, {
-          onSuccess: (hash) => {
-            toast({
-              title: "Tip Sent Successfully!",
-              description: `Sent ${amount} USDC to ${recipient.slice(0, 6)}...${recipient.slice(-4)}`,
-            });
-            setRecipient("");
-            setAmount("");
-            onTipSent?.();
-          },
-          onError: (error) => {
-            toast({
-              title: "Transaction Failed",
-              description: error.message,
-              variant: "destructive",
-            });
-          },
-          onSettled: () => {
-            setIsLoading(false);
-          }
-        }); */
+      } else if (tokenType === 'USDC') {
+        // Send USDC
+        try {
+          const hash = await writeContractAsync({
+            address: USDC_CONTRACT_ADDRESS,
+            abi: ERC20_ABI,
+            functionName: 'transfer',
+            args: [recipient as `0x${string}`, parseUnits(amount, 6)],
+            account: account!,
+            chain: baseSepolia,
+          });
+          
+          toast({
+            title: "Tip Sent Successfully!",
+            description: `Sent ${amount} USDC to ${recipient.slice(0, 6)}...${recipient.slice(-4)}`,
+          });
+          setRecipient("");
+          setAmount("");
+          setIsLoading(false);
+          onTipSent?.();
+        } catch (error: any) {
+          console.error("USDC transfer error:", error);
+          toast({
+            title: "Transaction Failed",
+            description: error.message || "Failed to send USDC tip",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        }
       }
     } catch (error: any) {
       console.error("Error sending tip:", error);

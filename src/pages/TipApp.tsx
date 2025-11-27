@@ -6,6 +6,8 @@ import { WalletConnect } from "@/components/WalletConnect";
 import { TipForm } from "@/components/TipForm";
 import { TransactionHistory } from "@/components/TransactionHistory";
 import { Analytics } from "@/components/Analytics";
+import { IdentityVerification } from "@/components/IdentityVerification";
+import { TipLinkGenerator } from "@/components/TipLinkGenerator";
 
 export const TipApp = () => {
   const navigate = useNavigate();
@@ -56,15 +58,17 @@ export const TipApp = () => {
 
           {/* Main App Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Wallet & Tip Form */}
+            {/* Left Column - Wallet & Forms */}
             <div className="space-y-6">
               <WalletConnect />
               <TipForm onTipSent={handleTipSent} />
+              <TipLinkGenerator />
             </div>
 
-            {/* Right Column - Transaction History */}
-            <div>
+            {/* Right Column - History & Verification */}
+            <div className="space-y-6">
               <TransactionHistory refreshTrigger={refreshTrigger} />
+              <IdentityVerification />
             </div>
           </div>
 
