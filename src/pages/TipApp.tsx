@@ -8,6 +8,7 @@ import { TransactionHistory } from "@/components/TransactionHistory";
 import { Analytics } from "@/components/Analytics";
 import { IdentityVerification } from "@/components/IdentityVerification";
 import { TipLinkGenerator } from "@/components/TipLinkGenerator";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const TipApp = () => {
   const navigate = useNavigate();
@@ -40,8 +41,11 @@ export const TipApp = () => {
                 <p className="text-sm text-muted-foreground">Send ETH tips on Base</p>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-              Testnet
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <div className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                Testnet
+              </div>
             </div>
           </div>
         </div>
